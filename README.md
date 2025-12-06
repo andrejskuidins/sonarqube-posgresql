@@ -16,6 +16,9 @@ This project automates the setup of a local Kubernetes cluster using Kind (Kuber
 
 ### Screenshots
 
+* A SonarQube instance is up and running within the Kubernetes cluster.
+* The SonarQube instance is accessible via an HTTP endpoint exposed by the ingress controller.
+
 #### SonarQube Dashboard
 ![SonarQube Dashboard](./screenshots/sonarqube-dashboard.png)
 
@@ -39,9 +42,6 @@ The script will:
 6. Deploy pgAdmin for database management
 
 ### Access Services
-
-* A SonarQube instance is up and running within the Kubernetes cluster.
-* The SonarQube instance is accessible via an HTTP endpoint exposed by the ingress controller.
 
 After installation completes, add these entries to your `/etc/hosts`:
 
