@@ -14,6 +14,14 @@ This project automates the setup of a local Kubernetes cluster using Kind (Kuber
 
 ## Quick Start
 
+### Screenshots
+
+#### SonarQube Dashboard
+![SonarQube Dashboard](./screenshots/sonarqube-dashboard.png)
+
+#### pgAdmin Dashboard
+![pgAdmin Dashboard](./screenshots/pgadmin-dashboard.png)
+
 ### Prerequisites
 - Docker
 - Bash
@@ -67,14 +75,6 @@ Then access:
 | `sonarqube.yml` | SonarQube Helm chart values |
 | `pgadmin.yml` | pgAdmin Kubernetes deployment |
 | `secret.yml` | Database credentials secret |
-
-## Screenshots
-
-### SonarQube Dashboard
-![SonarQube Dashboard](./screenshots/sonarqube-dashboard.png)
-
-### pgAdmin Dashboard
-![pgAdmin Dashboard](./screenshots/pgadmin-dashboard.png)
 
 ## Connecting pgAdmin to PostgreSQL
 
