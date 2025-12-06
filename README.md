@@ -2,104 +2,120 @@
 
 ## About the Project
 
-This project sets up a local Kubernetes cluster using Kind (Kubernetes in Docker) and deploys SonarQube along with a PostgreSQL database. It's designed to provide a quick and easy way to get a SonarQube instance up and running for code quality analysis in a Kubernetes environment.
+This project automates the setup of a local Kubernetes cluster using Kind (Kubernetes in Docker) and deploys SonarQube with PostgreSQL backend. It provides a complete code quality analysis environment in a Kubernetes cluster with web-based interfaces for both SonarQube and PostgreSQL management.
 
 ## Components
 
-### Kubernetes Kind
+- **Kind**: Local Kubernetes cluster running in Docker
+- **SonarQube**: Open-source code quality platform with static analysis
+- **PostgreSQL**: Database backend for SonarQube
+- **pgAdmin**: Web UI for PostgreSQL database management
+- **Nginx Ingress**: Routes traffic to SonarQube and pgAdmin
 
-Kind (Kubernetes in Docker) is a tool for running local Kubernetes clusters using Docker container "nodes". It was primarily designed for testing Kubernetes itself, but can be used for local development or CI workflows.
+## Quick Start
 
-### SonarQube
+### Screenshots
 
-SonarQube is an open-source platform developed by SonarSource for continuous inspection of code quality. It performs automatic reviews with static analysis of code to detect bugs, code smells, and security vulnerabilities.
+* A SonarQube instance is up and running within the Kubernetes cluster.
+* The SonarQube instance is accessible via an HTTP endpoint exposed by the ingress controller.
 
-### PostgreSQL
+#### SonarQube Dashboard
+![SonarQube Dashboard](./screenshots/sonarqube-dashboard.png)
 
-PostgreSQL is a powerful, open-source object-relational database system. In this setup, it's used as the backend database for SonarQube.
+#### pgAdmin Dashboard
+![pgAdmin Dashboard](./screenshots/pgadmin-dashboard.png)
 
-## Installation
 
-To set up this project, follow these steps:
+### Installation
 
-1. Install Go and add it to your PATH:
-   ```
-   go install sigs.k8s.io/kind@v0.24.0
-   export PATH=$HOME/.local/bin:$HOME/go/bin:$PATH
-   ```
+Run the automated setup script:
+```bash
+bash launch.sh
+```
 
-2. Create a Kind cluster with the following configuration:
-   ```
-   cat <<EOF | kind create cluster --config=-
-   kind: Cluster
-   apiVersion: kind.x-k8s.io/v1alpha4
-   nodes:
-   - role: control-plane
-     kubeadmConfigPatches:
-     - |
-       kind: InitConfiguration
-       nodeRegistration:
-         kubeletExtraArgs:
-           node-labels: "ingress-ready=true"
-     extraPortMappings:
-     - containerPort: 30000
-       hostPort: 30000
-       protocol: TCP
-   EOF
-   ```
+The script will:
+1. Install Kind (Kubernetes in Docker)
+2. Create a Kubernetes cluster with port mappings
+3. Deploy Nginx Ingress controller
+4. Install PostgreSQL with persistent storage
+5. Deploy SonarQube with database configuration
+6. Deploy pgAdmin for database management
 
-3. Apply the NGINX Ingress controller:
-   ```
-   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-   ```
+### Access Services
 
-4. Install PostgreSQL using Helm:
-   ```
-   helm install postgres -f pg.yml oci://registry-1.docker.io/bitnamicharts/postgresql
-   ```
+After installation completes, add these entries to your `/etc/hosts`:
 
-5. Wait for PostgreSQL to be ready (approximately 90 seconds):
-   ```
-   sleep 90
-   ```
+```bash
+echo "127.0.0.1  sonarqube.local" | sudo tee -a /etc/hosts
+echo "127.0.0.1  pgadmin.local" | sudo tee -a /etc/hosts
+```
 
-6. Apply the secret configuration:
-   ```
-   kubectl apply -f secret.yml
-   ```
+Then access:
 
-7. Add the Oteemo Helm repository and install SonarQube:
-   ```
-   helm repo add oteemocharts https://oteemo.github.io/charts
-   helm install sonarqube -f sq.yml oteemocharts/sonarqube
-   ```
+- **SonarQube**: http://sonarqube.local
+  - Username: `admin`
 
-   **jdbcUrl:
-   ```
-   jdbc:postgresql://postgres-postgresql.default.svc.cluster.local/sonarDB"
-   jdbc:postgresql://postgres-postgresql:5432/sonarDB
-   ```
+- **pgAdmin**: http://pgadmin.local
+  - Email: `user@domain.com`
 
-## Usage
-
-After installation, SonarQube should be accessible at `http://localhost:30000`. You can use this instance to analyze your code and track code quality metrics.
+- **PostgreSQL**: `localhost:5432` (via CLI or pgAdmin)
+  - Username: `postgres`
 
 ## Configuration Files
 
-- `pg.yml`: Contains PostgreSQL configuration for Helm.
-- `sq.yml`: Contains SonarQube configuration for Helm.
-- `secret.yml`: Contains secret configurations for the setup.
+| File | Purpose |
+|------|---------|
+| `launch.sh` | Automated installation script |
+| `postgres.yml` | PostgreSQL Helm chart values |
+| `sonarqube.yml` | SonarQube Helm chart values |
+| `pgadmin.yml` | pgAdmin Kubernetes deployment |
+| `secret.yml` | Database credentials secret |
 
-Make sure these files are present in your working directory before running the installation commands.
+## Connecting pgAdmin to PostgreSQL
+
+In pgAdmin web interface, use these connection parameters:
+
+| Parameter | Value |
+|-----------|-------|
+| Hostname | `postgresql.default.svc.cluster.local` |
+| Port | `5432` |
+| Username | `postgres` |
+| Database | `sonarDB` |
 
 ## Troubleshooting
 
-If you encounter any issues during setup:
-1. Ensure Docker is running and Kind is properly installed.
-2. Check if the required ports are free on your machine.
-3. Verify that all configuration files (`pg.yml`, `sq.yml`, `secret.yml`) are correctly formatted and present in your working directory.
+**Issue**: Services not accessible via hostnames
+- **Solution**: Ensure `/etc/hosts` entries are added and DNS is resolving
 
-For more detailed information on each component, refer to their official documentation:
+**Issue**: PostgreSQL connection failed in SonarQube
+- **Solution**: Check PostgreSQL pod status: `kubectl get pod postgresql-0`
+- Verify credentials in `secret.yml`
+
+**Issue**: Ingress shows no ADDRESS
+- **Solution**: Verify Nginx controller: `kubectl get pods -n ingress-nginx`
+
+## Useful Commands
+
+```bash
+# Check all pods
+kubectl get pods
+
+# View SonarQube logs
+kubectl logs -f deployment/sonarqube
+
+# Check PostgreSQL status
+kubectl get pod postgresql-0
+
+# Port-forward PostgreSQL (if needed)
+kubectl port-forward svc/postgresql 5432:5432
+
+# Delete entire setup
+kind delete cluster --name kind
+```
+
+## Documentation
+
 - [Kind Documentation](https://kind.sigs.k8s.io/)
 - [SonarQube Documentation](https://docs.sonarqube.org/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [pgAdmin Documentation](https://www.pgadmin.org/docs/)
