@@ -22,11 +22,6 @@ This project automates the setup of a local Kubernetes cluster using Kind (Kuber
 #### pgAdmin Dashboard
 ![pgAdmin Dashboard](./screenshots/pgadmin-dashboard.png)
 
-### Prerequisites
-- Docker
-- Bash
-- curl
-- Git
 
 ### Installation
 
