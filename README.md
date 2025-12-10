@@ -1,12 +1,13 @@
-# SonarQube on Kubernetes Kind Cluster
+# SonarQube on Kubernetes Minikube Cluster
 
 ## About the Project
 
-This project automates the setup of a local Kubernetes cluster using Kind (Kubernetes in Docker) and deploys SonarQube with PostgreSQL backend. It provides a complete code quality analysis environment in a Kubernetes cluster with web-based interfaces for both SonarQube and PostgreSQL management.
+This project automates the setup of a local Kubernetes cluster using Minikube and deploys SonarQube with PostgreSQL backend using Terraform. It provides a complete code quality analysis environment in Kubernetes with web-based interfaces for SonarQube and PostgreSQL management.
 
 ## Components
 
-- **Kind**: Local Kubernetes cluster running in Docker
+- **Minikube**: Local Kubernetes cluster running in Docker
+- **Terraform**: Infrastructure-as-Code for cluster deployment and configuration
 - **SonarQube**: Open-source code quality platform with static analysis
 - **PostgreSQL**: Database backend for SonarQube
 - **pgAdmin**: Web UI for PostgreSQL database management
@@ -25,55 +26,74 @@ This project automates the setup of a local Kubernetes cluster using Kind (Kuber
 #### pgAdmin Dashboard
 ![pgAdmin Dashboard](./screenshots/pgadmin-dashboard.png)
 
+#### kubernetes cluster
+![kubernetes cluster](./screenshots/kubernetes-cluster.png)
 
-### Installation
+### 1. Install Prerequisites
 
-Run the automated setup script:
 ```bash
-bash launch.sh
+bash install-deps.sh
 ```
 
-The script will:
-1. Install Kind (Kubernetes in Docker)
-2. Create a Kubernetes cluster with port mappings
-3. Deploy Nginx Ingress controller
-4. Install PostgreSQL with persistent storage
-5. Deploy SonarQube with database configuration
-6. Deploy pgAdmin for database management
+This installs:
+- Docker
+- kubectl
+- Helm
+- Go
+- Minikube
+- Terraform
 
-### Access Services
+### 2. Deploy Cluster
 
-After installation completes, add these entries to your `/etc/hosts`:
+```bash
+bash setup-minikube.sh
+```
+
+This script will:
+1. Start Minikube with Docker driver and port mappings
+2. Wait for cluster readiness
+3. Enable Ingress addon
+4. Initialize Terraform
+5. Deploy PostgreSQL, SonarQube, and pgAdmin via Terraform
+6. Display all running pods
+
+### 3. Configure Local Access
+
+Add these entries to your `/etc/hosts`:
 
 ```bash
 echo "127.0.0.1  sonarqube.local" | sudo tee -a /etc/hosts
 echo "127.0.0.1  pgadmin.local" | sudo tee -a /etc/hosts
 ```
 
-Then access:
+## Access Services
 
-- **SonarQube**: http://sonarqube.local
-  - Username: `admin`
+After deployment completes, access:
 
-- **pgAdmin**: http://pgadmin.local
-  - Email: `user@domain.com`
+- **SonarQube**: [http://sonarqube.local](http://sonarqube.local)
+  - Username: `admin` (password: setup on first login)
 
-- **PostgreSQL**: `localhost:5432` (via CLI or pgAdmin)
-  - Username: `postgres`
+- **pgAdmin**: [http://pgadmin.local](http://pgadmin.local)
+  - Email: `user@domain.com` (password: in `pgadmin.yml`)
+
+- **PostgreSQL**: `localhost:5432`
+  - Username: `postgres` (password: in `secret.yml`)
 
 ## Configuration Files
 
 | File | Purpose |
 |------|---------|
-| `launch.sh` | Automated installation script |
+| `install-deps.sh` | Prerequisites installation script |
+| `setup-minikube.sh` | Minikube startup and Terraform deployment |
+| `main.tf` | Terraform: Helm providers and chart deployments |
 | `postgres.yml` | PostgreSQL Helm chart values |
 | `sonarqube.yml` | SonarQube Helm chart values |
-| `pgadmin.yml` | pgAdmin Kubernetes deployment |
-| `secret.yml` | Database credentials secret |
+| `pgadmin.yml` | pgAdmin Kubernetes manifest |
+| `secret.yml` | Database credentials as Kubernetes secret |
 
 ## Connecting pgAdmin to PostgreSQL
 
-In pgAdmin web interface, use these connection parameters:
+In pgAdmin web interface, use these parameters:
 
 | Parameter | Value |
 |-----------|-------|
@@ -81,41 +101,71 @@ In pgAdmin web interface, use these connection parameters:
 | Port | `5432` |
 | Username | `postgres` |
 | Database | `sonarDB` |
+| Password | Check `secret.yml` |
+
+## Kubernetes Pods Status
+
+View running pods after deployment:
+
+```bash
+kubectl get pods
+
+# Example output:
+# NAME                             READY   STATUS    RESTARTS   AGE
+# postgresql-0                     1/1     Running   0          2m
+# sonarqube-xxxx-yyyy              1/1     Running   0          1m
+# pgadmin-xxxx-yyyy                1/1     Running   0          1m
+# ingress-nginx-controller-xxxx     1/1     Running   0          3m
+```
+
+Monitor specific pods:
+
+```bash
+kubectl logs -f deployment/sonarqube
+kubectl logs -f statefulset/postgresql
+kubectl get pod postgresql-0 -o wide
+```
 
 ## Troubleshooting
 
-**Issue**: Services not accessible via hostnames
-- **Solution**: Ensure `/etc/hosts` entries are added and DNS is resolving
-
-**Issue**: PostgreSQL connection failed in SonarQube
-- **Solution**: Check PostgreSQL pod status: `kubectl get pod postgresql-0`
-- Verify credentials in `secret.yml`
-
-**Issue**: Ingress shows no ADDRESS
-- **Solution**: Verify Nginx controller: `kubectl get pods -n ingress-nginx`
+| Issue | Solution |
+|-------|----------|
+| Services not accessible via hostnames | Verify `/etc/hosts` entries and DNS resolution |
+| PostgreSQL connection failed | Check: `kubectl get pod postgresql-0` and verify `secret.yml` credentials |
+| Ingress shows no ADDRESS | Verify: `kubectl get pods -n ingress-nginx` |
+| Terraform apply fails | Run: `terraform destroy && terraform apply -auto-approve` |
+| Minikube won't start | Ensure Docker is running and has sufficient resources |
 
 ## Useful Commands
 
 ```bash
-# Check all pods
-kubectl get pods
+# Cluster status
+kubectl get nodes
+kubectl get pods -A
 
-# View SonarQube logs
+# View logs
 kubectl logs -f deployment/sonarqube
+kubectl logs -f statefulset/postgresql
+kubectl logs -f deployment/pgadmin
 
-# Check PostgreSQL status
-kubectl get pod postgresql-0
-
-# Port-forward PostgreSQL (if needed)
+# Port forwarding (if needed)
 kubectl port-forward svc/postgresql 5432:5432
+kubectl port-forward svc/sonarqube 9000:9000
 
-# Delete entire setup
-kind delete cluster --name kind
+# Terraform operations
+terraform plan
+terraform destroy
+
+# Minikube operations
+minikube stop
+minikube delete
+minikube status
 ```
 
 ## Documentation
 
-- [Kind Documentation](https://kind.sigs.k8s.io/)
+- [Minikube Documentation](https://minikube.sigs.k8s.io/)
+- [Terraform Documentation](https://www.terraform.io/docs)
 - [SonarQube Documentation](https://docs.sonarqube.org/)
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/)
 - [pgAdmin Documentation](https://www.pgadmin.org/docs/)
