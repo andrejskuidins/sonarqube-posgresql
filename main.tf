@@ -2,11 +2,11 @@ terraform {
   required_providers {
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.0"
+      version = "~> 3.1.1"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.0"
+      version = "~> 3.0.1"
     }
   }
 }
@@ -16,8 +16,15 @@ provider "kubernetes" {
 }
 
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     config_path = "~/.kube/config"
+  }
+}
+
+# Apply secret and pgadmin manifests
+resource "null_resource" "apply_manifests" {
+  provisioner "local-exec" {
+    command = "kubectl apply -f secret.yml && kubectl apply -f pgadmin.yml"
   }
 }
 
@@ -28,8 +35,11 @@ resource "helm_release" "postgresql" {
   chart            = "postgresql"
   namespace        = "default"
   create_namespace = false
+  timeout          = 600
 
   values = [file("${path.module}/postgres.yml")]
+
+  depends_on = [null_resource.apply_manifests]
 }
 
 # SonarQube
@@ -38,20 +48,9 @@ resource "helm_release" "sonarqube" {
   repository = "https://SonarSource.github.io/helm-chart-sonarqube"
   chart      = "sonarqube"
   namespace  = "default"
+  timeout    = 6000
 
   values = [file("${path.module}/sonarqube.yml")]
 
   depends_on = [helm_release.postgresql]
-}
-
-# PgAdmin
-resource "kubernetes_manifest" "pgadmin" {
-  manifest = yamldecode(file("${path.module}/pgadmin.yml"))
-
-  depends_on = [helm_release.postgresql]
-}
-
-# Secret
-resource "kubernetes_manifest" "secret" {
-  manifest = yamldecode(file("${path.module}/secret.yml"))
 }

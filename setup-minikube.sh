@@ -11,11 +11,12 @@ minikube start --driver=docker \
 echo "Waiting for cluster to be ready..."
 kubectl wait --for=condition=Ready nodes --all --timeout=300s
 
-echo "Installing Nginx Ingress Controller..."
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo update
-helm upgrade --install nginx ingress-nginx/ingress-nginx \
-  --namespace ingress-nginx --create-namespace
+echo "Enabling Ingress addon..."
+minikube addons enable ingress
+
+echo "Waiting for Ingress controller..."
+kubectl wait --for=condition=Available deployment/ingress-nginx-controller \
+  -n ingress-nginx --timeout=300s
 
 echo "Initializing Terraform..."
 terraform init
